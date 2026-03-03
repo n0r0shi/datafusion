@@ -1,0 +1,115 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+
+#   http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+# Scalar tests
+
+# Basic: element found
+query B
+SELECT array_contains([1, 2, 3], 2);
+----
+true
+
+# Basic: element not found
+query B
+SELECT array_contains([1, 2, 3], 4);
+----
+false
+
+# Key Spark behavior: element not found AND array has NULLs → NULL
+query B
+SELECT array_contains([1, NULL, 3], 2);
+----
+NULL
+
+# Element found despite NULLs → true
+query B
+SELECT array_contains([1, NULL, 3], 1);
+----
+true
+
+query B
+SELECT array_contains([1, NULL, 3], 3);
+----
+true
+
+# NULL needle → NULL
+query B
+SELECT array_contains([1, 2, 3], NULL::INT);
+----
+NULL
+
+# NULL array → NULL
+query B
+SELECT array_contains(NULL::INT[], 1);
+----
+NULL
+
+# Both NULL → NULL
+query B
+SELECT array_contains(NULL::INT[], NULL::INT);
+----
+NULL
+
+# Empty array → false
+query B
+SELECT array_contains(arrow_cast(make_array(), 'List(Int64)'), 1::BIGINT);
+----
+false
+
+# String type
+query B
+SELECT array_contains(['a', 'b', 'c'], 'b');
+----
+true
+
+query B
+SELECT array_contains(['a', 'b', 'c'], 'd');
+----
+false
+
+query B
+SELECT array_contains(['a', NULL, 'c'], 'd');
+----
+NULL
+
+# Bigint type
+query B
+SELECT array_contains([1::BIGINT, 2::BIGINT, 3::BIGINT], 2::BIGINT);
+----
+true
+
+# Array input (columnar) tests
+query B
+SELECT array_contains(column1, column2)
+FROM VALUES
+([1, 2, 3], 2),
+([1, 2, 3], 4),
+([1, NULL, 3], 2),
+([1, NULL, 3], 1),
+(NULL::INT[], 1);
+----
+true
+false
+NULL
+true
+NULL
+
+# All NULLs in array, element not found → NULL
+query B
+SELECT array_contains([NULL::INT, NULL::INT], 1);
+----
+NULL
